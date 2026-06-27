@@ -5,7 +5,7 @@ import { Session, Speaker, DAY_LABELS } from "@/lib/conference-data";
 import { SessionCard } from "./session-card";
 import { TimelineView } from "./timeline-view";
 import { FilterBar, SessionFilters, DEFAULT_FILTERS } from "./filter-bar";
-import { CalendarDays, LayoutGrid, Clock } from "lucide-react";
+import { CalendarDays, ChevronDown, LayoutGrid, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -30,6 +30,19 @@ export function SessionsView({
 }: SessionsViewProps) {
   const [filters, setFilters] = useState<SessionFilters>(DEFAULT_FILTERS);
   const [groupMode, setGroupMode] = useState<GroupMode>("day");
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+
+  const toggleDay = (day: string) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) {
+        next.delete(day);
+      } else {
+        next.add(day);
+      }
+      return next;
+    });
+  };
 
   const filtered = useMemo(() => {
     const q = filters.query.trim().toLowerCase();
@@ -160,33 +173,53 @@ export function SessionsView({
         />
       ) : (
         <div className="flex flex-col gap-8">
-          {grouped.map((group) => (
-            <section key={group.key}>
-              {groupMode === "day" && (
-                <div className="sticky top-0 z-10 -mx-2 px-2 py-2 bg-background/95 backdrop-blur-sm mb-3">
-                  <h2 className="text-sm font-semibold tracking-wide text-foreground flex items-center gap-2">
-                    <CalendarDays className="size-4 text-emerald-600" />
-                    {group.key}
-                    <span className="text-xs text-muted-foreground font-normal tabular-nums">
-                      {group.items.length} session{group.items.length !== 1 ? "s" : ""}
-                    </span>
-                  </h2>
-                </div>
-              )}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
-                {group.items.map((s) => (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    onOpen={onOpenSession}
-                    onSpeakerClick={onSpeakerClick}
-                    isSaved={isSaved(s.id)}
-                    onToggleSave={onToggleSave}
-                  />
-                ))}
-              </div>
-            </section>
-          ))}
+          {grouped.map((group) => {
+            const isCollapsed = groupMode === "day" && collapsedDays.has(group.key);
+
+            return (
+              <section key={group.key}>
+                {groupMode === "day" && (
+                  <div className="sticky top-0 z-10 -mx-2 mb-3 bg-background/95 px-2 py-2 backdrop-blur-sm">
+                    <button
+                      type="button"
+                      className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-accent/60"
+                      onClick={() => toggleDay(group.key)}
+                      aria-expanded={!isCollapsed}
+                      aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.key}`}
+                    >
+                      <span className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-wide text-foreground">
+                        <ChevronDown
+                          className={cn(
+                            "size-4 shrink-0 text-muted-foreground transition-transform",
+                            isCollapsed && "-rotate-90"
+                          )}
+                        />
+                        <CalendarDays className="size-4 shrink-0 text-emerald-600" />
+                        <span className="truncate">{group.key}</span>
+                      </span>
+                      <span className="shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                        {group.items.length} session{group.items.length !== 1 ? "s" : ""}
+                      </span>
+                    </button>
+                  </div>
+                )}
+                {!isCollapsed && (
+                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                    {group.items.map((s) => (
+                      <SessionCard
+                        key={s.id}
+                        session={s}
+                        onOpen={onOpenSession}
+                        onSpeakerClick={onSpeakerClick}
+                        isSaved={isSaved(s.id)}
+                        onToggleSave={onToggleSave}
+                      />
+                    ))}
+                  </div>
+                )}
+              </section>
+            );
+          })}
         </div>
       )}
     </div>

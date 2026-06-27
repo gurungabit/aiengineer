@@ -37,8 +37,8 @@ export function SessionCard({
       onClick={() => onOpen(session)}
     >
       {/* Type badge + save button */}
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-center gap-1.5">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5">
           <Badge variant="outline" className={cn("font-medium", typeInfo.bg, typeInfo.text, typeInfo.border)}>
             <span className={cn("mr-1 inline-block size-1.5 rounded-full", typeInfo.dot)} />
             {typeInfo.label}
@@ -55,20 +55,23 @@ export function SessionCard({
           )}
         </div>
         <Button
-          variant="ghost"
-          size="icon"
+          variant={isSaved ? "default" : "outline"}
+          size="sm"
           className={cn(
-            "size-7 shrink-0 transition-colors",
-            isSaved ? "text-emerald-600 hover:text-emerald-700" : "text-muted-foreground hover:text-foreground"
+            "h-8 shrink-0 gap-1.5 px-2.5 text-xs transition-colors",
+            isSaved
+              ? "bg-emerald-600 text-white hover:bg-emerald-700"
+              : "bg-background/80 text-muted-foreground hover:text-foreground"
           )}
           onClick={(e) => {
             e.stopPropagation();
             onToggleSave(session.id);
           }}
           aria-label={isSaved ? "Remove from schedule" : "Add to schedule"}
-          title={isSaved ? "Saved — click to remove" : "Add to My Schedule"}
+          title={isSaved ? "Saved - click to remove" : "Add to My Schedule"}
         >
           {isSaved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+          {isSaved ? "Saved" : "Add to Schedule"}
         </Button>
       </div>
 
@@ -103,7 +106,8 @@ export function SessionCard({
               {session.speakers.map((sp, i) => (
                 <span key={sp + i}>
                   <button
-                    className="hover:text-emerald-700 dark:hover:text-emerald-400 hover:underline text-left"
+                    type="button"
+                    className="cursor-pointer text-left hover:text-emerald-700 hover:underline dark:hover:text-emerald-400"
                     onClick={(e) => {
                       e.stopPropagation();
                       onSpeakerClick(sp);

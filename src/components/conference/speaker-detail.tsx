@@ -1,6 +1,7 @@
 "use client";
 
 import { Speaker, TYPE_COLORS, trackColor, formatTime, Session } from "@/lib/conference-data";
+import { assetPath } from "@/lib/asset-path";
 import {
   Sheet,
   SheetContent,
@@ -50,7 +51,7 @@ export function SpeakerDetail({
         <SheetHeader className="p-6 pb-4 border-b">
           <div className="flex items-start gap-4">
             <Avatar className="size-16 shrink-0 ring-2 ring-emerald-500/30">
-              {speaker.photoUrl ? <AvatarImage src={speaker.photoUrl} alt={speaker.name} /> : null}
+              {speaker.photoUrl ? <AvatarImage src={assetPath(speaker.photoUrl)} alt={speaker.name} /> : null}
               <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 text-emerald-700 dark:text-emerald-300 font-semibold text-xl">
                 {initials || "?"}
               </AvatarFallback>
@@ -119,10 +120,11 @@ export function SpeakerDetail({
                     const endStr = s.endTime != null ? formatTime(s.endTime) : "";
                     return (
                       <button
+                        type="button"
                         key={s.id}
                         onClick={() => onSessionClick(s)}
                         className={cn(
-                          "flex flex-col gap-1.5 p-3 rounded-lg border bg-card hover:bg-accent transition-colors text-left border-l-4",
+                          "flex cursor-pointer flex-col gap-1.5 rounded-lg border border-l-4 bg-card p-3 text-left transition-colors hover:bg-accent",
                           typeInfo.border
                         )}
                       >

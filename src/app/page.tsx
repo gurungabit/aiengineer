@@ -10,6 +10,7 @@ import {
   SpeakersPayload,
   DAY_SHORT,
 } from "@/lib/conference-data";
+import { assetPath } from "@/lib/asset-path";
 import { useSavedSessions } from "@/lib/use-saved-sessions";
 import { SessionsView } from "@/components/conference/sessions-view";
 import { SpeakersView } from "@/components/conference/speakers-view";
@@ -41,8 +42,8 @@ export default function Home() {
   useEffect(() => {
     let cancelled = false;
     Promise.all([
-      fetch("/data/sessions.json").then((r) => r.json() as Promise<SessionsPayload>),
-      fetch("/data/speakers.json").then((r) => r.json() as Promise<SpeakersPayload>),
+      fetch(assetPath("/data/sessions.json")).then((r) => r.json() as Promise<SessionsPayload>),
+      fetch(assetPath("/data/speakers.json")).then((r) => r.json() as Promise<SpeakersPayload>),
     ])
       .then(([s, sp]) => {
         if (cancelled) return;

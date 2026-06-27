@@ -1,10 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Session, Speaker, DAY_LABELS, TYPE_COLORS, trackColor, formatTime } from "@/lib/conference-data";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Bookmark, BookmarkCheck, Clock, MapPin, Users, CalendarDays } from "lucide-react";
+import { Bookmark, BookmarkCheck, Clock, MapPin, Users, CalendarDays, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface TimelineViewProps {
@@ -27,6 +27,20 @@ export function TimelineView({
   isSaved,
   onToggleSave,
 }: TimelineViewProps) {
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+
+  const toggleDay = (day: string) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) {
+        next.delete(day);
+      } else {
+        next.add(day);
+      }
+      return next;
+    });
+  };
+
   // Group by day for section headers (sessions are already sorted chronologically
   // by SessionsView, but we re-sort here to be defensive).
   const grouped = useMemo(() => {
@@ -59,22 +73,40 @@ export function TimelineView({
 
   return (
     <div className="flex flex-col gap-6">
-      {grouped.map((group) => (
-        <section key={group.key}>
-          {/* Day header */}
-          <div className="sticky top-0 z-10 -mx-2 px-2 py-2 bg-background/95 backdrop-blur-sm mb-2">
-            <h2 className="text-sm font-semibold tracking-wide text-foreground flex items-center gap-2">
-              <CalendarDays className="size-4 text-emerald-600" />
-              {group.key}
-              <span className="text-xs text-muted-foreground font-normal tabular-nums">
-                {group.items.length} session{group.items.length !== 1 ? "s" : ""}
-              </span>
-            </h2>
-          </div>
+      {grouped.map((group) => {
+        const isCollapsed = collapsedDays.has(group.key);
 
-          {/* Rows */}
-          <div className="flex flex-col">
-            {group.items.map((s, idx) => {
+        return (
+          <section key={group.key}>
+            {/* Day header */}
+            <div className="sticky top-0 z-10 -mx-2 mb-2 bg-background/95 px-2 py-2 backdrop-blur-sm">
+              <button
+                type="button"
+                className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-accent/60"
+                onClick={() => toggleDay(group.key)}
+                aria-expanded={!isCollapsed}
+                aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.key}`}
+              >
+                <span className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-wide text-foreground">
+                  <ChevronDown
+                    className={cn(
+                      "size-4 shrink-0 text-muted-foreground transition-transform",
+                      isCollapsed && "-rotate-90"
+                    )}
+                  />
+                  <CalendarDays className="size-4 shrink-0 text-emerald-600" />
+                  <span className="truncate">{group.key}</span>
+                </span>
+                <span className="shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                  {group.items.length} session{group.items.length !== 1 ? "s" : ""}
+                </span>
+              </button>
+            </div>
+
+            {/* Rows */}
+            {!isCollapsed && (
+              <div className="flex flex-col">
+                {group.items.map((s, idx) => {
               const typeInfo = TYPE_COLORS[s.type] ?? TYPE_COLORS.session;
               const startStr = s.startTime != null ? formatTime(s.startTime) : s.time.split("-")[0]?.trim() ?? "";
               const endStr = s.endTime != null ? formatTime(s.endTime) : s.time.split("-")[1]?.trim() ?? "";
@@ -144,7 +176,8 @@ export function TimelineView({
                           {s.speakers.map((sp, i) => (
                             <span key={sp + i}>
                               <button
-                                className="hover:text-emerald-700 dark:hover:text-emerald-400 hover:underline text-left"
+                                type="button"
+                                className="cursor-pointer text-left hover:text-emerald-700 hover:underline dark:hover:text-emerald-400"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onSpeakerClick(sp);
@@ -162,22 +195,23 @@ export function TimelineView({
 
                   {/* Right: save button */}
                   <Button
-                    variant="ghost"
-                    size="icon"
+                    variant={saved ? "default" : "outline"}
+                    size="sm"
                     className={cn(
-                      "size-7 shrink-0 self-start transition-colors",
+                      "h-8 shrink-0 self-start gap-1.5 px-2.5 text-xs transition-colors",
                       saved
-                        ? "text-emerald-600 hover:text-emerald-700"
-                        : "text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                        : "bg-background text-muted-foreground hover:text-foreground"
                     )}
                     onClick={(e) => {
                       e.stopPropagation();
                       onToggleSave(s.id);
                     }}
                     aria-label={saved ? "Remove from schedule" : "Add to schedule"}
-                    title={saved ? "Saved — click to remove" : "Add to My Schedule"}
+                    title={saved ? "Saved - click to remove" : "Add to My Schedule"}
                   >
                     {saved ? <BookmarkCheck className="size-4" /> : <Bookmark className="size-4" />}
+                    {saved ? "Saved" : "Add"}
                   </Button>
 
                   {/* Type color stripe — left edge */}
@@ -190,10 +224,12 @@ export function TimelineView({
                   />
                 </div>
               );
-            })}
-          </div>
-        </section>
-      ))}
+                })}
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
   );
 }

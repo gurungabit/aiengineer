@@ -1,6 +1,7 @@
 "use client";
 
 import { Session, TYPE_COLORS, trackColor, formatTime, Speaker } from "@/lib/conference-data";
+import { assetPath } from "@/lib/asset-path";
 import {
   Sheet,
   SheetContent,
@@ -120,12 +121,13 @@ export function SessionDetail({
                   const sp = speakerMap.get(name);
                   return (
                     <button
+                      type="button"
                       key={name}
                       onClick={() => onSpeakerClick(name)}
-                      className="flex items-start gap-3 p-3 rounded-lg border bg-card hover:bg-accent transition-colors text-left"
+                      className="flex cursor-pointer items-start gap-3 rounded-lg border bg-card p-3 text-left transition-colors hover:bg-accent"
                     >
                       <Avatar className="size-10 shrink-0">
-                        {sp?.photoUrl ? <AvatarImage src={sp.photoUrl} alt={name} /> : null}
+                        {sp?.photoUrl ? <AvatarImage src={assetPath(sp.photoUrl)} alt={name} /> : null}
                         <AvatarFallback className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
                           {name.split(" ").map((w) => w[0]).slice(0, 2).join("")}
                         </AvatarFallback>

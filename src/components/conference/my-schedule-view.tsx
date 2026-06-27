@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Session, Speaker, DAY_LABELS, TYPE_COLORS, trackColor, formatTime } from "@/lib/conference-data";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, CalendarX2, Clock, MapPin, Calendar, Trash2 } from "lucide-react";
+import { Bookmark, CalendarX2, Clock, MapPin, Calendar, Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MyScheduleViewProps {
@@ -25,6 +25,20 @@ export function MyScheduleView({
   onOpenSession,
   onBrowse,
 }: MyScheduleViewProps) {
+  const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+
+  const toggleDay = (day: string) => {
+    setCollapsedDays((prev) => {
+      const next = new Set(prev);
+      if (next.has(day)) {
+        next.delete(day);
+      } else {
+        next.add(day);
+      }
+      return next;
+    });
+  };
+
   const saved = useMemo(() => {
     return sessions
       .filter((s) => savedIds.has(s.id))
@@ -63,7 +77,7 @@ export function MyScheduleView({
         <div>
           <h3 className="font-semibold text-lg">Your schedule is empty</h3>
           <p className="text-sm text-muted-foreground mt-1 max-w-md">
-            Tap the bookmark icon on any session to save it here. Build your own personal
+            Use Add to Schedule on any session to save it here. Build your own personal
             track across all four days of the World's Fair.
           </p>
         </div>
@@ -104,19 +118,37 @@ export function MyScheduleView({
 
       {/* Sessions grouped by day */}
       <div className="flex flex-col gap-6">
-        {grouped.map((group) => (
-          <section key={group.key}>
-            <div className="sticky top-0 z-10 -mx-2 px-2 py-2 bg-background/95 backdrop-blur-sm mb-3">
-              <h2 className="text-sm font-semibold tracking-wide text-foreground flex items-center gap-2">
-                <Calendar className="size-4 text-emerald-600" />
-                {group.key}
-                <span className="text-xs text-muted-foreground font-normal tabular-nums">
-                  {group.items.length} session{group.items.length !== 1 ? "s" : ""}
-                </span>
-              </h2>
-            </div>
-            <div className="flex flex-col gap-2">
-              {group.items.map((s) => {
+        {grouped.map((group) => {
+          const isCollapsed = collapsedDays.has(group.key);
+
+          return (
+            <section key={group.key}>
+              <div className="sticky top-0 z-10 -mx-2 mb-3 bg-background/95 px-2 py-2 backdrop-blur-sm">
+                <button
+                  type="button"
+                  className="flex w-full cursor-pointer items-center justify-between gap-3 rounded-md px-1.5 py-1 text-left transition-colors hover:bg-accent/60"
+                  onClick={() => toggleDay(group.key)}
+                  aria-expanded={!isCollapsed}
+                  aria-label={`${isCollapsed ? "Expand" : "Collapse"} ${group.key}`}
+                >
+                  <span className="flex min-w-0 items-center gap-2 text-sm font-semibold tracking-wide text-foreground">
+                    <ChevronDown
+                      className={cn(
+                        "size-4 shrink-0 text-muted-foreground transition-transform",
+                        isCollapsed && "-rotate-90"
+                      )}
+                    />
+                    <Calendar className="size-4 shrink-0 text-emerald-600" />
+                    <span className="truncate">{group.key}</span>
+                  </span>
+                  <span className="shrink-0 text-xs font-normal tabular-nums text-muted-foreground">
+                    {group.items.length} session{group.items.length !== 1 ? "s" : ""}
+                  </span>
+                </button>
+              </div>
+              {!isCollapsed && (
+                <div className="flex flex-col gap-2">
+                  {group.items.map((s) => {
                 const typeInfo = TYPE_COLORS[s.type] ?? TYPE_COLORS.session;
                 const startStr = s.startTime != null ? formatTime(s.startTime) : "";
                 const endStr = s.endTime != null ? formatTime(s.endTime) : "";
@@ -158,23 +190,27 @@ export function MyScheduleView({
                       )}
                     </div>
                     <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 shrink-0 text-emerald-600 hover:text-emerald-700"
+                      variant="outline"
+                      size="sm"
+                      className="h-8 shrink-0 gap-1.5 px-2.5 text-xs text-destructive hover:text-destructive"
                       onClick={(e) => {
                         e.stopPropagation();
                         onToggleSave(s.id);
                       }}
                       aria-label="Remove from schedule"
+                      title="Remove from schedule"
                     >
-                      <Bookmark className="size-4 fill-current" />
+                      <Trash2 className="size-3.5" />
+                      Remove
                     </Button>
                   </Card>
                 );
-              })}
-            </div>
-          </section>
-        ))}
+                  })}
+                </div>
+              )}
+            </section>
+          );
+        })}
       </div>
     </div>
   );

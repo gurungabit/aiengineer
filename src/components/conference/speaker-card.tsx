@@ -1,6 +1,7 @@
 "use client";
 
 import { Speaker } from "@/lib/conference-data";
+import { assetPath } from "@/lib/asset-path";
 import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Users } from "lucide-react";
@@ -25,7 +26,7 @@ export function SpeakerCard({ speaker, onOpen }: SpeakerCardProps) {
       className="group flex flex-col items-center text-center p-4 cursor-pointer hover:shadow-md hover:-translate-y-0.5 transition-all gap-2"
     >
       <Avatar className="size-16 ring-2 ring-transparent group-hover:ring-emerald-500/40 transition-all">
-        {speaker.photoUrl ? <AvatarImage src={speaker.photoUrl} alt={speaker.name} /> : null}
+        {speaker.photoUrl ? <AvatarImage src={assetPath(speaker.photoUrl)} alt={speaker.name} /> : null}
         <AvatarFallback className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 text-emerald-700 dark:text-emerald-300 font-semibold">
           {initials || "?"}
         </AvatarFallback>
