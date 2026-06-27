@@ -1,11 +1,11 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { Session, Speaker, DAY_LABELS, TYPE_COLORS, trackColor, formatTime } from "@/lib/conference-data";
+import { Session, DAY_LABELS, TYPE_COLORS, trackColor, formatTime } from "@/lib/conference-data";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, CalendarX2, Clock, MapPin, Calendar, Trash2, ChevronDown } from "lucide-react";
+import { Bookmark, CalendarX2, Check, Clock, MapPin, Calendar, Share2, Trash2, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface MyScheduleViewProps {
@@ -15,6 +15,37 @@ interface MyScheduleViewProps {
   onClearAll: () => void;
   onOpenSession: (s: Session) => void;
   onBrowse: () => void;
+  shareUrl: string;
+  sharedScheduleLoaded: boolean;
+}
+
+async function copyToClipboard(value: string) {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(value);
+      return;
+    }
+  } catch {
+    // Fall back below when browser permissions block the Clipboard API.
+  }
+
+  const textArea = document.createElement("textarea");
+  textArea.value = value;
+  textArea.setAttribute("readonly", "");
+  textArea.style.height = "1px";
+  textArea.style.left = "0";
+  textArea.style.position = "fixed";
+  textArea.style.top = "0";
+  textArea.style.width = "1px";
+  textArea.style.opacity = "0";
+  document.body.append(textArea);
+  textArea.focus();
+  textArea.select();
+  textArea.setSelectionRange(0, value.length);
+
+  const copied = document.execCommand("copy");
+  textArea.remove();
+  if (!copied) throw new Error("Unable to copy schedule link");
 }
 
 export function MyScheduleView({
@@ -24,8 +55,11 @@ export function MyScheduleView({
   onClearAll,
   onOpenSession,
   onBrowse,
+  shareUrl,
+  sharedScheduleLoaded,
 }: MyScheduleViewProps) {
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
+  const [copied, setCopied] = useState(false);
 
   const toggleDay = (day: string) => {
     setCollapsedDays((prev) => {
@@ -67,6 +101,17 @@ export function MyScheduleView({
   const totalMinutes = saved.reduce((sum, s) => sum + (s.durationMinutes ?? 0), 0);
   const hours = Math.floor(totalMinutes / 60);
   const mins = totalMinutes % 60;
+  const handleShare = async () => {
+    if (!shareUrl) return;
+
+    try {
+      await copyToClipboard(shareUrl);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  };
 
   if (saved.length === 0) {
     return (
@@ -105,15 +150,32 @@ export function MyScheduleView({
             <span className="text-muted-foreground">scheduled</span>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-1.5 text-destructive hover:text-destructive"
-          onClick={onClearAll}
-        >
-          <Trash2 className="size-3.5" />
-          Clear all
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          {sharedScheduleLoaded && (
+            <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
+              Shared link loaded
+            </span>
+          )}
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5"
+            onClick={handleShare}
+            disabled={!shareUrl}
+          >
+            {copied ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
+            {copied ? "Copied" : "Share schedule"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-1.5 text-destructive hover:text-destructive"
+            onClick={onClearAll}
+          >
+            <Trash2 className="size-3.5" />
+            Clear all
+          </Button>
+        </div>
       </div>
 
       {/* Sessions grouped by day */}

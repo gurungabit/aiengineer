@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 
 const STORAGE_KEY = "aie-wf-2026:saved-sessions";
 
-/** Persisted set of saved session ids (titles, since sessions have no id from server). */
+/** Persisted set of normalized saved session ids. */
 export function useSavedSessions() {
   // Lazy initializer — runs once on the client during the first render.
   // Safe with SSR because localStorage is only touched inside the initializer,
@@ -46,5 +46,9 @@ export function useSavedSessions() {
 
   const clearAll = useCallback(() => setSaved(new Set()), []);
 
-  return { saved, toggle, isSaved, hydrated: true, clearAll };
+  const replaceAll = useCallback((ids: Iterable<string>) => {
+    setSaved(new Set(ids));
+  }, []);
+
+  return { saved, toggle, isSaved, hydrated: true, clearAll, replaceAll };
 }

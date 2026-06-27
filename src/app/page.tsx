@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   normalizeSessions,
   normalizeSpeakers,
@@ -11,6 +11,12 @@ import {
   DAY_SHORT,
 } from "@/lib/conference-data";
 import { assetPath } from "@/lib/asset-path";
+import {
+  buildScheduleShareUrl,
+  decodeScheduleIds,
+  getSharedScheduleParam,
+  SCHEDULE_SHARE_PARAM,
+} from "@/lib/share-schedule";
 import { useSavedSessions } from "@/lib/use-saved-sessions";
 import { SessionsView } from "@/components/conference/sessions-view";
 import { SpeakersView } from "@/components/conference/speakers-view";
@@ -35,8 +41,10 @@ export default function Home() {
   const [openSpeaker, setOpenSpeaker] = useState<Speaker | null>(null);
   const [sessionSheetOpen, setSessionSheetOpen] = useState(false);
   const [speakerSheetOpen, setSpeakerSheetOpen] = useState(false);
+  const [sharedScheduleLoaded, setSharedScheduleLoaded] = useState(false);
+  const sharedScheduleHandledRef = useRef(false);
 
-  const { saved, toggle, isSaved, hydrated, clearAll } = useSavedSessions();
+  const { saved, toggle, isSaved, hydrated, clearAll, replaceAll } = useSavedSessions();
 
   // Load data
   useEffect(() => {
@@ -74,6 +82,31 @@ export default function Home() {
     speakers.forEach((s) => m.set(s.name, s));
     return m;
   }, [speakers]);
+  const shareUrl = useMemo(() => {
+    if (typeof window === "undefined") return "";
+    return buildScheduleShareUrl(saved, sessions, window.location.href);
+  }, [saved, sessions]);
+
+  useEffect(() => {
+    if (sharedScheduleHandledRef.current || sessions.length === 0 || typeof window === "undefined") {
+      return;
+    }
+
+    sharedScheduleHandledRef.current = true;
+    const encodedSchedule = getSharedScheduleParam(window.location);
+    if (!encodedSchedule) return;
+
+    const sharedIds = decodeScheduleIds(encodedSchedule, sessions);
+    if (sharedIds.length === 0) return;
+
+    const timeoutId = window.setTimeout(() => {
+      replaceAll(sharedIds);
+      setSharedScheduleLoaded(true);
+      setTab("schedule");
+    }, 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [sessions, replaceAll]);
 
   // Handlers
   const handleOpenSession = (s: Session) => {
@@ -96,6 +129,18 @@ export default function Home() {
     setOpenSession(s);
     setSessionSheetOpen(true);
     setSpeakerSheetOpen(false);
+  };
+  const handleClearSchedule = () => {
+    clearAll();
+    setSharedScheduleLoaded(false);
+
+    if (typeof window === "undefined") return;
+
+    const url = new URL(window.location.href);
+    const hashParams = new URLSearchParams(url.hash.startsWith("#") ? url.hash.slice(1) : url.hash);
+    url.searchParams.delete(SCHEDULE_SHARE_PARAM);
+    if (hashParams.has(SCHEDULE_SHARE_PARAM)) url.hash = "";
+    window.history.replaceState(null, "", url.toString());
   };
 
   if (loading) {
@@ -213,9 +258,11 @@ export default function Home() {
               sessions={sessions}
               savedIds={saved}
               onToggleSave={toggle}
-              onClearAll={clearAll}
+              onClearAll={handleClearSchedule}
               onOpenSession={handleOpenSession}
               onBrowse={() => setTab("sessions")}
+              shareUrl={shareUrl}
+              sharedScheduleLoaded={sharedScheduleLoaded}
             />
           </TabsContent>
           <TabsContent value="info" className="mt-0">
