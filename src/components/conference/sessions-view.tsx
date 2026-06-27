@@ -3,8 +3,9 @@
 import { useMemo, useState } from "react";
 import { Session, Speaker, DAY_LABELS } from "@/lib/conference-data";
 import { SessionCard } from "./session-card";
+import { TimelineView } from "./timeline-view";
 import { FilterBar, SessionFilters, DEFAULT_FILTERS } from "./filter-bar";
-import { CalendarDays, LayoutGrid } from "lucide-react";
+import { CalendarDays, LayoutGrid, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 
@@ -17,7 +18,7 @@ interface SessionsViewProps {
   onToggleSave: (id: string) => void;
 }
 
-type GroupMode = "day" | "none";
+type GroupMode = "day" | "none" | "timeline";
 
 export function SessionsView({
   sessions,
@@ -95,7 +96,7 @@ export function SessionsView({
         totalCount={sessions.length}
       />
 
-      {/* Group toggle */}
+      {/* View mode toggle */}
       <div className="flex items-center justify-between">
         <div className="inline-flex rounded-md border bg-muted/30 p-0.5 text-xs">
           <Button
@@ -109,6 +110,18 @@ export function SessionsView({
           >
             <CalendarDays className="size-3.5" />
             By Day
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            className={cn(
+              "h-7 px-2.5 gap-1.5",
+              groupMode === "timeline" && "bg-background shadow-sm font-medium"
+            )}
+            onClick={() => setGroupMode("timeline")}
+          >
+            <Clock className="size-3.5" />
+            Timeline
           </Button>
           <Button
             variant="ghost"
@@ -137,6 +150,14 @@ export function SessionsView({
             Clear filters
           </Button>
         </div>
+      ) : groupMode === "timeline" ? (
+        <TimelineView
+          sessions={sorted}
+          onOpen={onOpenSession}
+          onSpeakerClick={onSpeakerClick}
+          isSaved={isSaved}
+          onToggleSave={onToggleSave}
+        />
       ) : (
         <div className="flex flex-col gap-8">
           {grouped.map((group) => (
