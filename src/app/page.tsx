@@ -41,7 +41,7 @@ export default function Home() {
   const [openSpeaker, setOpenSpeaker] = useState<Speaker | null>(null);
   const [sessionSheetOpen, setSessionSheetOpen] = useState(false);
   const [speakerSheetOpen, setSpeakerSheetOpen] = useState(false);
-  const [sharedScheduleLoaded, setSharedScheduleLoaded] = useState(false);
+  const [sharedScheduleIds, setSharedScheduleIds] = useState<string[] | null>(null);
   const sharedScheduleHandledRef = useRef(false);
 
   const { saved, toggle, isSaved, hydrated, clearAll, replaceAll } = useSavedSessions();
@@ -84,8 +84,8 @@ export default function Home() {
   }, [speakers]);
   const shareUrl = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return buildScheduleShareUrl(saved, sessions, window.location.href);
-  }, [saved, sessions]);
+    return buildScheduleShareUrl(sharedScheduleIds ? new Set(sharedScheduleIds) : saved, sessions, window.location.href);
+  }, [saved, sessions, sharedScheduleIds]);
 
   useEffect(() => {
     if (sharedScheduleHandledRef.current || sessions.length === 0 || typeof window === "undefined") {
@@ -100,13 +100,12 @@ export default function Home() {
     if (sharedIds.length === 0) return;
 
     const timeoutId = window.setTimeout(() => {
-      replaceAll(sharedIds);
-      setSharedScheduleLoaded(true);
+      setSharedScheduleIds(sharedIds);
       setTab("schedule");
     }, 0);
 
     return () => window.clearTimeout(timeoutId);
-  }, [sessions, replaceAll]);
+  }, [sessions]);
 
   // Handlers
   const handleOpenSession = (s: Session) => {
@@ -130,10 +129,7 @@ export default function Home() {
     setSessionSheetOpen(true);
     setSpeakerSheetOpen(false);
   };
-  const handleClearSchedule = () => {
-    clearAll();
-    setSharedScheduleLoaded(false);
-
+  const removeScheduleUrlParam = () => {
     if (typeof window === "undefined") return;
 
     const url = new URL(window.location.href);
@@ -141,6 +137,22 @@ export default function Home() {
     url.searchParams.delete(SCHEDULE_SHARE_PARAM);
     if (hashParams.has(SCHEDULE_SHARE_PARAM)) url.hash = "";
     window.history.replaceState(null, "", url.toString());
+  };
+  const handleAddSharedSchedule = () => {
+    if (!sharedScheduleIds) return;
+
+    const next = new Set(saved);
+    sharedScheduleIds.forEach((id) => next.add(id));
+    replaceAll(next);
+  };
+  const handleCloseSharedSchedule = () => {
+    setSharedScheduleIds(null);
+    removeScheduleUrlParam();
+  };
+  const handleClearSchedule = () => {
+    clearAll();
+    setSharedScheduleIds(null);
+    removeScheduleUrlParam();
   };
 
   if (loading) {
@@ -262,7 +274,9 @@ export default function Home() {
               onOpenSession={handleOpenSession}
               onBrowse={() => setTab("sessions")}
               shareUrl={shareUrl}
-              sharedScheduleLoaded={sharedScheduleLoaded}
+              sharedScheduleIds={sharedScheduleIds}
+              onAddSharedSchedule={handleAddSharedSchedule}
+              onCloseSharedSchedule={handleCloseSharedSchedule}
             />
           </TabsContent>
           <TabsContent value="info" className="mt-0">

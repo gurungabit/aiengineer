@@ -16,7 +16,9 @@ interface MyScheduleViewProps {
   onOpenSession: (s: Session) => void;
   onBrowse: () => void;
   shareUrl: string;
-  sharedScheduleLoaded: boolean;
+  sharedScheduleIds: string[] | null;
+  onAddSharedSchedule: () => void;
+  onCloseSharedSchedule: () => void;
 }
 
 async function copyToClipboard(value: string) {
@@ -56,10 +58,21 @@ export function MyScheduleView({
   onOpenSession,
   onBrowse,
   shareUrl,
-  sharedScheduleLoaded,
+  sharedScheduleIds,
+  onAddSharedSchedule,
+  onCloseSharedSchedule,
 }: MyScheduleViewProps) {
   const [collapsedDays, setCollapsedDays] = useState<Set<string>>(new Set());
   const [copied, setCopied] = useState(false);
+  const isViewingSharedSchedule = sharedScheduleIds !== null;
+  const displayedIds = useMemo(
+    () => (sharedScheduleIds ? new Set(sharedScheduleIds) : savedIds),
+    [savedIds, sharedScheduleIds]
+  );
+  const unsavedSharedCount = useMemo(
+    () => sharedScheduleIds?.filter((id) => !savedIds.has(id)).length ?? 0,
+    [savedIds, sharedScheduleIds]
+  );
 
   const toggleDay = (day: string) => {
     setCollapsedDays((prev) => {
@@ -75,13 +88,13 @@ export function MyScheduleView({
 
   const saved = useMemo(() => {
     return sessions
-      .filter((s) => savedIds.has(s.id))
+      .filter((s) => displayedIds.has(s.id))
       .sort(
         (a, b) =>
           (a.dayIndex ?? 99) - (b.dayIndex ?? 99) ||
           (a.startTime ?? 0) - (b.startTime ?? 0)
       );
-  }, [sessions, savedIds]);
+  }, [sessions, displayedIds]);
 
   const grouped = useMemo(() => {
     const m = new Map<string, Session[]>();
@@ -113,7 +126,7 @@ export function MyScheduleView({
     }
   };
 
-  if (saved.length === 0) {
+  if (saved.length === 0 && !isViewingSharedSchedule) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
         <div className="size-16 rounded-full bg-muted flex items-center justify-center">
@@ -134,6 +147,26 @@ export function MyScheduleView({
     );
   }
 
+  if (saved.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
+        <div className="size-16 rounded-full bg-muted flex items-center justify-center">
+          <CalendarX2 className="size-8 text-muted-foreground" />
+        </div>
+        <div>
+          <h3 className="font-semibold text-lg">Shared schedule is empty</h3>
+          <p className="text-sm text-muted-foreground mt-1 max-w-md">
+            This link does not include any sessions.
+          </p>
+        </div>
+        <Button onClick={onCloseSharedSchedule} variant="outline" className="gap-2">
+          <Bookmark className="size-4" />
+          View my schedule
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col gap-4">
       {/* Stats bar */}
@@ -142,7 +175,9 @@ export function MyScheduleView({
           <div className="flex items-center gap-1.5">
             <Bookmark className="size-4 text-emerald-600" />
             <span className="font-semibold tabular-nums">{saved.length}</span>
-            <span className="text-muted-foreground">session{saved.length !== 1 ? "s" : ""}</span>
+            <span className="text-muted-foreground">
+              {isViewingSharedSchedule ? "shared " : ""}session{saved.length !== 1 ? "s" : ""}
+            </span>
           </div>
           <div className="flex items-center gap-1.5">
             <Clock className="size-4 text-muted-foreground" />
@@ -151,9 +186,9 @@ export function MyScheduleView({
           </div>
         </div>
         <div className="flex flex-wrap items-center justify-end gap-2">
-          {sharedScheduleLoaded && (
+          {isViewingSharedSchedule && (
             <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-1 text-xs font-medium text-emerald-700 dark:text-emerald-300">
-              Shared link loaded
+              Viewing shared schedule
             </span>
           )}
           <Button
@@ -166,15 +201,44 @@ export function MyScheduleView({
             {copied ? <Check className="size-3.5" /> : <Share2 className="size-3.5" />}
             {copied ? "Copied" : "Share schedule"}
           </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            className="gap-1.5 text-destructive hover:text-destructive"
-            onClick={onClearAll}
-          >
-            <Trash2 className="size-3.5" />
-            Clear all
-          </Button>
+          {isViewingSharedSchedule ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={onCloseSharedSchedule}
+              >
+                <Bookmark className="size-3.5" />
+                View mine
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                onClick={onAddSharedSchedule}
+                disabled={unsavedSharedCount === 0}
+                title={
+                  unsavedSharedCount === 0
+                    ? "All shared sessions are already in your schedule"
+                    : `Add ${unsavedSharedCount} shared session${unsavedSharedCount !== 1 ? "s" : ""}`
+                }
+              >
+                {unsavedSharedCount === 0 ? <Check className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                {unsavedSharedCount === 0 ? "All saved" : "Add all to mine"}
+              </Button>
+            </>
+          ) : (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-1.5 text-destructive hover:text-destructive"
+              onClick={onClearAll}
+            >
+              <Trash2 className="size-3.5" />
+              Clear all
+            </Button>
+          )}
         </div>
       </div>
 
@@ -214,6 +278,7 @@ export function MyScheduleView({
                 const typeInfo = TYPE_COLORS[s.type] ?? TYPE_COLORS.session;
                 const startStr = s.startTime != null ? formatTime(s.startTime) : "";
                 const endStr = s.endTime != null ? formatTime(s.endTime) : "";
+                const sessionIsSaved = savedIds.has(s.id);
                 return (
                   <Card
                     key={s.id}
@@ -251,20 +316,43 @@ export function MyScheduleView({
                         </p>
                       )}
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 shrink-0 gap-1.5 px-2.5 text-xs text-destructive hover:text-destructive"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onToggleSave(s.id);
-                      }}
-                      aria-label="Remove from schedule"
-                      title="Remove from schedule"
-                    >
-                      <Trash2 className="size-3.5" />
-                      Remove
-                    </Button>
+                    {isViewingSharedSchedule ? (
+                      <Button
+                        variant={sessionIsSaved ? "default" : "outline"}
+                        size="sm"
+                        className={cn(
+                          "h-8 shrink-0 gap-1.5 px-2.5 text-xs",
+                          sessionIsSaved
+                            ? "bg-emerald-600 text-white hover:bg-emerald-700"
+                            : "text-muted-foreground hover:text-foreground"
+                        )}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          if (!sessionIsSaved) onToggleSave(s.id);
+                        }}
+                        disabled={sessionIsSaved}
+                        aria-label={sessionIsSaved ? "Already in my schedule" : "Add to my schedule"}
+                        title={sessionIsSaved ? "Already in my schedule" : "Add to my schedule"}
+                      >
+                        {sessionIsSaved ? <Check className="size-3.5" /> : <Bookmark className="size-3.5" />}
+                        {sessionIsSaved ? "Saved" : "Add to Schedule"}
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 shrink-0 gap-1.5 px-2.5 text-xs text-destructive hover:text-destructive"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onToggleSave(s.id);
+                        }}
+                        aria-label="Remove from schedule"
+                        title="Remove from schedule"
+                      >
+                        <Trash2 className="size-3.5" />
+                        Remove
+                      </Button>
+                    )}
                   </Card>
                 );
                   })}
